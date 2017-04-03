@@ -15,7 +15,7 @@ public class PuzzleController : MonoBehaviour
     public GameObject GameStatus;    //ゲームstatus
     public GameObject EventSystem;    //イベントシステムの取得（処理中に切る場合がある）
 
-    public int GameSize = 8;//行と列の大きさ。とりあえず８だが、スタート時にGameStatusから代入して変えられるように
+    public int GameSize;//行と列の大きさ。とりあえず８だが、スタート時にGameStatusから代入して変えられるように
 
     public GameObject PointUI;    //ポイント表記
     public GameObject DestroyUI;    //消した数表記
@@ -56,8 +56,8 @@ public class PuzzleController : MonoBehaviour
 
         NewBlock.transform.position = new Vector3(PositionColumn, PositionLine, -3);
         float FloatGameSize = (float)GameSize;
-//        float Scale = FloatGameSize / 8;
-//        NewBlock.transform.localScale= new Vector3(Scale, Scale, 1);
+        float Scale = 8/ FloatGameSize*2/3;
+        NewBlock.transform.localScale= new Vector3(Scale, Scale, 1);
 //↑盤面全体をScaleする仕様のほうがいい
 
         //Textの字がNameの字になる（本番では画像がImageの画像になる）
@@ -84,15 +84,15 @@ public class PuzzleController : MonoBehaviour
     {
         string Name="";
         string Image="";
-        int NameRandom = Random.Range(1, 6);
-
-        if (NameRandom == 1) { Name = "A"; }
-        else if (NameRandom == 2) { Name = "B"; }
-        else if (NameRandom == 3) { Name = "C"; }
-        else if (NameRandom == 4) { Name = "D"; }
-        else if (NameRandom == 5) { Name = "E"; }
-        else { Name = "F"; }
-
+        int NameRandom = Random.Range(1, 7);
+        //bdesqn
+        if (NameRandom == 1) { Name = "b"; }
+        else if (NameRandom == 2) { Name = "d"; }
+        else if (NameRandom == 3) { Name = "e"; }
+        else if (NameRandom == 4) { Name = "s"; }
+        else if (NameRandom == 5) { Name = "q"; }
+        else if (NameRandom == 6) { Name = "n"; }
+        else { Name = "w"; }
         MakeBlock( Column, Line, Name, Image);
     }
 
@@ -104,7 +104,8 @@ public class PuzzleController : MonoBehaviour
     }
     public IEnumerator StartMakeBlockCoroutine()
     {
-        TapBlock.SetActive(true);//操作不能
+        GameSize = 8;//ココで最初のGamzeSizeを定義。ゆくゆくは関数作って戻り値で定義する
+            TapBlock.SetActive(true);//操作不能
         int CountColumn = 1;
         int CountLine = 1;
         while (CountLine <= GameSize)
@@ -113,6 +114,7 @@ public class PuzzleController : MonoBehaviour
             while (CountColumn <= GameSize)
             {
                 DecideBlock(CountColumn,CountLine);
+           //     Debug.Log(CountColumn+"-"+GameSize);
                 yield return null;
                 CountColumn++;
             }
@@ -208,9 +210,9 @@ public class PuzzleController : MonoBehaviour
             FindTagName = "Block" + FindTagColumn + "-" + FindTagLine;
   //                     Debug.Log(FindTagName);
 
-            if ((EndPoint - (MoveOne * WhileCount)) < 0 | (EndPoint - (MoveOne * WhileCount)) > 8)
+            if ((EndPoint - (MoveOne * WhileCount)) < 0 | (EndPoint - (MoveOne * WhileCount)) > 16)
             {
-                Debug.Log("0以下か9以上の行か列を動かそうとしている");
+                Debug.Log("0以下か16以上の行か列を動かそうとしている");
                 break;
             }
             if (GameObject.FindGameObjectWithTag(FindTagName)==null)
@@ -411,7 +413,8 @@ public class PuzzleController : MonoBehaviour
             CountLine--;
         }
         //辞書の単語と比較
-        string[] Words = { "ABC","CDE" };
+        //bdesqn
+        string[] Words = { "bdes","sqn","dde","bsn","dees" };
         int WordsMax = Words.Length;
         int WordsCount = 0;
         string Word = "";
@@ -431,9 +434,9 @@ public class PuzzleController : MonoBehaviour
                 int SPColumn;
                 int SPLine;
                 float FloatSPLine;
-                FloatSPLine = StartPoint / 9;
+                FloatSPLine = StartPoint / (GameSize+1);
                 SPLine = Mathf.FloorToInt(FloatSPLine) + 1;
-                SPColumn = StartPoint - ((SPLine - 1) * 9) + 1;
+                SPColumn = StartPoint - ((SPLine - 1) * (GameSize + 1)) + 1;
                 SPLine = GameSize - (SPLine - 1);
                 //その行列の文字に消去フラグを立てる
                 int WhileCount = 0;
@@ -532,10 +535,10 @@ public class PuzzleController : MonoBehaviour
         while (CountBig <= 2)//一周目は横方向、二周目は縦方向の揃いをチェック
         {
             CountLine = 1;
-            while (CountLine <= 8)
+            while (CountLine <= GameSize)
             {
                 CountColumn = 1;
-                while (CountColumn <= 6)
+                while (CountColumn <= GameSize-2)
                 {
                     CheckColumn1 = CountColumn;
                     CheckColumn2 = CountColumn + 1;
@@ -623,10 +626,10 @@ public class PuzzleController : MonoBehaviour
         string FindTagName;
         int DestroyFlag =0;
 
-        while (CountColumn <= 8)
+        while (CountColumn <= GameSize)
         {
             CountLine = 1;
-            while (CountLine <= 8)
+            while (CountLine <= GameSize)
             {
                 FindTagC = CountColumn.ToString();
                 FindTagL = CountLine.ToString();
@@ -682,14 +685,14 @@ public class PuzzleController : MonoBehaviour
             FallGoFlag = 0;
             EndPoint = 0;
 //            Debug.Log(CountColumn+"列 飛ばす："+UnDestroyedLine+"まで");
-            while (CountLine <= 8)
+            while (CountLine <= GameSize)
             {
                 FindTagC = CountColumn.ToString();
                 FindTagL = CountLine.ToString();
                 FindTagName = "Block" + FindTagC + "-" + FindTagL;
   //              Debug.Log(CountColumn + "-" + CountLine + FindTagName);
 
-                if (CountLine < 8)
+                if (CountLine < GameSize)
                 {
                     if (GameObject.FindGameObjectWithTag(FindTagName) == null)
                     {
@@ -782,8 +785,8 @@ public class PuzzleController : MonoBehaviour
                 //落下処理フラグが立っている時だけ落下処理
                 if (FallGoFlag == 1)
                 {
-                    CountLine = 8;
-                    if (EndPoint == 0) { EndPoint = 8; }//EndPointを検出したパターン以外はEndPoint=8になる
+                    CountLine = GameSize;
+                    if (EndPoint == 0) { EndPoint = GameSize; }//EndPointを検出したパターン以外はEndPoint=8になる
                     StartCoroutine(MoveBlockCoroutine(CountFallBlock, 1, 0, EndPoint, CountColumn, CountNull));
  //                   Debug.Log(CountColumn + "-" + CountLine + "Stone:" + CountFallBlock + " EndPoint:" + EndPoint + " Column:" + CountColumn + " Null:" + CountNull);
                     // yield return new WaitForSeconds(0.2f);//遅延時間
@@ -832,7 +835,7 @@ public class PuzzleController : MonoBehaviour
         string FindTagL;
         string FindTagName;
 
-        while (CountLine <= 8)
+        while (CountLine <= GameSize)
         {
             FindTagC = Column.ToString();
             FindTagL = CountLine.ToString();
@@ -842,7 +845,7 @@ public class PuzzleController : MonoBehaviour
             { CountNull++; }
             CountLine++;
         }
-        StartLine = 8-CountNull+1;
+        StartLine = GameSize-CountNull+1;
         while (CountWhile < CountNull)
         {
             DecideBlock(Column, StartLine);

@@ -26,7 +26,6 @@ public class BlockStatus : MonoBehaviour,
 
 
     //ドラッグ処理
-    public Transform CanvasTran;
     public GameObject DraggingBlock;
     public GameObject DraggedBlock;
     public Vector3 ScreenPoint;
@@ -48,7 +47,6 @@ public class BlockStatus : MonoBehaviour,
 
     void Awake()
     {
-        CanvasTran = transform.parent;
     }
 
     //Clumnの位置指定。GameSpace内の位置を返す
