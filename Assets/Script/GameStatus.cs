@@ -3,14 +3,24 @@ using UnityEngine.UI;
 using System.Collections;
 using UnityEngine.EventSystems;
 
+
 public class GameStatus : MonoBehaviour
+//ワンゲームごとのステータスを保持する
+
 {
+    //宣言
     //ゲームごとのステータスを保持する
-    public int Point = 0;
-    public int DestroyPoint= 0;
+    //ゲームプレイの間持ちつづける
+    public int Point;
+    public int Level;
 
-    //ステータスの定義
+    //レベルアップ時に操作
+    public float Time;
+    public int GoalPoint;
+    public int DestroyPoint;
+    public int GameSize;
 
+    public string[] UseGriff;
 
     // Update is called once per frame
     void Update()

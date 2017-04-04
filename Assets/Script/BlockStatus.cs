@@ -5,18 +5,17 @@ using UnityEngine.EventSystems;
 
 public class BlockStatus : MonoBehaviour,
         IBeginDragHandler, IDragHandler, IEndDragHandler
+//ブロックの種類を保持する
+//ブロックへの操作を受けた時は、ここを起点にPuzzleCOntrollerを呼び出す
+//cloneして使う
 {
-    //ブロックごとのステータスを保持する
-    //cloneして使う
 
-    //ステータスの定義
+    //宣言
     public string Name = "name";//名前、ブロックの種類を定義
     public string Image = "image";//イメージ名、ブロックの画像を定義
     public int Column = 0;//列
     public int Line = 0;//行
-
     public int DestroyFlag = 0;//消去フラグ
-
 
     // Update is called once per frame
     void Update()
@@ -24,8 +23,7 @@ public class BlockStatus : MonoBehaviour,
 
     }
 
-
-    //ドラッグ処理
+    //ドラッグ処理関連オブジェクト・宣言
     public GameObject DraggingBlock;
     public GameObject DraggedBlock;
     public Vector3 ScreenPoint;
@@ -40,15 +38,12 @@ public class BlockStatus : MonoBehaviour,
     public int EndColumn=0;
     public int EndLine=0;
 
-
     public int DraggingColumn = 0;//ドラッグ動作中の列。そこ以外は無反応
     public int DraggingLine = 0;//ドラッグ動作中の行。そこ以外は無反応
 
 
-    void Awake()
-    {
-    }
-
+    //この二つの関数はPuzzleContrallerと同じもの。
+    //いちいちFindすると大変そうなので同じものをコピーしてある→変更したらあっちも変更要
     //Clumnの位置指定。GameSpace内の位置を返す
     public float GetPositionColumn(int Column)
     {
@@ -65,7 +60,6 @@ public class BlockStatus : MonoBehaviour,
     }
 
  
-
     public void OnMouseDown()
     {
         if (DraggingBlock != null) return;//非ドラッグ中のみ判定

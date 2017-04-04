@@ -4,40 +4,272 @@ using System.Collections;
 using UnityEngine.EventSystems;
 
 public class PuzzleController : MonoBehaviour
-//, IPointerEnterHandler, IPointerExitHandler
-{
-    //パズル部分を全て制御する
+//パズル部分を全て制御する
 
-    //定義
+{
+    //オブジェクト
     public GameObject GameSpace;//表示スペース
     public GameObject BlockPrefab;    //ブロックプレファブ
     public GameObject PlayerStatus;    //プレイヤーstatus
     public GameObject GameStatus;    //ゲームstatus
     public GameObject EventSystem;    //イベントシステムの取得（処理中に切る場合がある）
 
-    public int GameSize;//行と列の大きさ。とりあえず８だが、スタート時にGameStatusから代入して変えられるように
+    public GameObject ButtonLvStart;    //レベルスタートボタン
+    public GameObject ButtonLvStartText;    //レベルスタートテキスト
+    public GameObject ButtonNextLvStart;    //Nextレベルスタートボタン
+    public GameObject ButtonReStart;    //再挑戦ボタン
+    public GameObject ButtonGoMenu;    //メニューに戻るボタン
+    public GameObject ButtonPause;    //ポーズボタン
+    public GameObject ButtonPauseText;    //ポーズボタンText
+    public int PauseCount=0;
 
+
+    //宣言
+    public int NowGameSize;//行と列の大きさ。とりあえず８だが、スタート時にGameStatusから代入して変えられるように
+    public float NowTime;//タイマー用。最大時間＝GameStatusのTime、経過時間＝NowTime
+    public int TimeFlag=0;//タイマーのオンオフを切り替えるFlag
+    public int DestroyAmount = 0;//直前に消した数。０のとき消去判定を止めるために使う
+    public int DestoryingFlag = 0;//消去処理中をあらわすFlag
+
+    //表示UI
     public GameObject PointUI;    //ポイント表記
     public GameObject DestroyUI;    //消した数表記
+    public GameObject LevelUI;    //消した数表記
+    public GameObject TimeUI;    //消した数表記
+    public GameObject GoalPointUI;    //消した数表記
+    public GameObject PercentUI;    //消した数表記
+
 
     //タップ切るための板
     public GameObject TapBlock;
 
-    public GameObject DebugText;//デバッグ用
-    public int DestroyAmount=0;//直前に消した数。０のとき消去判定を止めるために使う
+
+
+    //パズルスタート処理
+    public void NewGame()
+    {
+        TapBlock.SetActive(true);//操作不能→LvSTARTを押すまで
+        GameSpace.GetComponent<SpriteRenderer>().color = new Color(1.0f, 1.0f, 1.0f, 1.0f);
+        AllDestroy();
+        //ステータスの初期化
+        GameStatus.GetComponent<GameStatus>().Point = 0;
+        GameStatus.GetComponent<GameStatus>().Level = 0;
+        NowTime = 0;
+        TimeFlag = 0;
+
+        ButtonLvStart.SetActive(false);
+
+        //レベルアップ時に操作
+        GameStatus.GetComponent<GameStatus>().Time = 0;
+        GameStatus.GetComponent<GameStatus>().GoalPoint = 0;
+        GameStatus.GetComponent<GameStatus>().DestroyPoint = 0;
+        GameStatus.GetComponent<GameStatus>().GameSize = 8;
+        NowGameSize = GameStatus.GetComponent<GameStatus>().GameSize;
+
+        //レベル１の開始
+        NewLevel(0);
+    }
+
+    //次のレベルへ進む処理
+    public void NewLevel(int PrevLevel)
+        {
+            StartCoroutine(NewLevelCoroutine(PrevLevel));
+        }
+    public IEnumerator NewLevelCoroutine(int PrevLevel)
+    {
+        yield return StartCoroutine("AllDestroyCoroutine");
+        GameSpace.GetComponent<SpriteRenderer>().color = new Color(1.0f, 1.0f, 1.0f, 1.0f);
+
+        GameStatus.GetComponent<GameStatus>().Level += 1;
+        int NextLevel = GameStatus.GetComponent<GameStatus>().Level;
+        PlusLevel(0);
+
+        GameStatus.GetComponent<GameStatus>().Point = 0;
+        PlusPoint(0);
+
+        DrawPercent();
+
+        //レベルデザインはここ
+        GameStatus.GetComponent<GameStatus>().Time = 30 * NextLevel;
+        PlusTime(0);
+        NowTime = GameStatus.GetComponent<GameStatus>().Time;
+        GameStatus.GetComponent<GameStatus>().GoalPoint = (30+ NextLevel) * NextLevel*5*20;
+        PlusGoalPoint(0);
+        GameStatus.GetComponent<GameStatus>().GameSize+=0;
+        NowGameSize = GameStatus.GetComponent<GameStatus>().GameSize;
+
+        //使うGriffの決定
+        string[] UseGriff = { "b", "d", "e", "s", "q", "n" };
+        GameStatus.GetComponent<GameStatus>().UseGriff = UseGriff;
+
+        //ブロック配置
+        yield return StartCoroutine("StartMakeBlockCoroutine");
+        TapBlock.SetActive(true);
+        LevelStartConfirm(NextLevel);
+        yield return null;
+    }
+    //開始確認
+    public void LevelStartConfirm(int NextLevel)
+    {
+        string NextLevelString = NextLevel.ToString();
+        ButtonLvStartText.GetComponent<Text>().text = "Level" + NextLevelString + " START";
+        ButtonLvStart.SetActive(true);
+
+    }
+    //開始
+    public void LevelStart()
+    {
+        TapBlock.SetActive(false);
+        TimeFlag = 1;
+    }
+
+    // Update is called once per frame
+    void Update()
+    {
+        if (TimeFlag == 1) {
+            float PrevTime = NowTime;
+            NowTime -= Time.deltaTime;
+            float TimeAmount = NowTime - PrevTime;
+            PlusTime(TimeAmount);
+            if (NowTime < 0) {
+                //時間切れ→止めて、見かけだけ０にする（２回以上反応しないため）
+                //消去処理中はクリア処理のほうで判定させる
+                TimeFlag = 0;
+                TimeUI.GetComponent<Text>().text = "0";
+                if (DestoryingFlag != 1) {
+                    GameOver();
+                    }
+                }
+            }
+    }
+
+    //ボタン用のタップブロック操作関数
+    public void TapBlockFalse()
+    {
+        TapBlock.SetActive(false);
+    }
+
+    //ポーズボタン
+    public void Pause()
+    {
+        if (PauseCount == 0)
+        {
+            ButtonPauseText.GetComponent<Text>().text = "再開";
+            TapBlock.SetActive(true);
+            TimeFlag = 0;
+            PauseCount = 1;
+        }
+        else
+        {
+            ButtonPauseText.GetComponent<Text>().text = "ポーズ";
+            TapBlock.SetActive(false);
+            TimeFlag = 1;
+            PauseCount = 0;
+
+        }
+    }
+    //レベルクリア判定
+    public void CheckLevelClear()
+    {
+        if (GameStatus.GetComponent<GameStatus>().Point >= GameStatus.GetComponent<GameStatus>().GoalPoint)
+        {
+            //ポイントがゴールを超える→クリア
+            TimeFlag = 0;
+            LevelClear();
+        }
+        else {
+            //クリアしていないかつ時間が０以下→ゲームオーバー
+            if (NowTime <= 0)
+            {
+                GameOver();
+            }
+        }
+    }
+
+    //クリア→次のレベルへ行く確認
+    public void LevelClear()
+    {
+        TapBlock.SetActive(true);//ボタン以外操作不能→ボタンが押されるまで
+        GameSpace.GetComponent<SpriteRenderer>().color = new Color(0.5f, 1.0f, 0.5f, 1.0f);
+        ButtonNextLvStart.SetActive(true);
+
+    }
+    //次のレベルへ進む
+    public void NextLevelStart()
+    {
+        NewLevel(GameStatus.GetComponent<GameStatus>().Level);
+    }
+
+
+    //ゲームオーバー処理
+    public void GameOver()
+    {
+        TapBlock.SetActive(true);//ボタン以外操作不能→ボタンが押されるまで
+        GameSpace.GetComponent<SpriteRenderer>().color = new Color(1.0f,0,0,1.0f);
+        ButtonReStart.SetActive(true);
+        ButtonGoMenu.SetActive(true);
+    }
+
+    //ゴールポイント表示
+    public void PlusGoalPoint(int Amount)
+    {
+        GameStatus.GetComponent<GameStatus>().GoalPoint += Amount;
+        GoalPointUI.GetComponent<Text>().text = GameStatus.GetComponent<GameStatus>().GoalPoint.ToString();
+    }
+
+
+    //達成度表示
+    public void DrawPercent()
+    {
+        float FloatGoalPoint = (float)GameStatus.GetComponent<GameStatus>().GoalPoint;
+        float FloatPoint = (float)GameStatus.GetComponent<GameStatus>().Point;
+        float Percent = FloatPoint / FloatGoalPoint * 100;
+        int IntPercent;
+        IntPercent = Mathf.FloorToInt(Percent);
+        PercentUI.GetComponent<Text>().text = IntPercent.ToString()+"%";
+    }
+
+    //時間加算・表示
+    public void PlusTime(float Amount)
+    {
+        GameStatus.GetComponent<GameStatus>().Time += Amount;
+        TimeUI.GetComponent<Text>().text = GameStatus.GetComponent<GameStatus>().Time.ToString();
+    }
+
+
+    //レベル加算・表示
+    public void PlusLevel(int Amount)
+    {
+        GameStatus.GetComponent<GameStatus>().Level += Amount;
+        LevelUI.GetComponent<Text>().text = GameStatus.GetComponent<GameStatus>().Level.ToString();
+    }
+
+    //ポイント加算・表示
+    public void PlusPoint(int Amount)
+    {
+        GameStatus.GetComponent<GameStatus>().Point += Amount;
+        PointUI.GetComponent<Text>().text = GameStatus.GetComponent<GameStatus>().Point.ToString();
+    }
+    //破壊数加算・表示
+    public void PlusDestroy(int Amount)
+    {
+        GameStatus.GetComponent<GameStatus>().DestroyPoint += Amount;
+        DestroyUI.GetComponent<Text>().text = GameStatus.GetComponent<GameStatus>().DestroyPoint.ToString();
+    }
+
 
     //Clumnの位置指定。GameSpace内の位置を返す
     public float GetPositionColumn(int Column)
     {
         float FloatColumn = (float)Column;
-        float PositionColumn = (FloatColumn * 7 / 10) - 3;
+        float PositionColumn = (FloatColumn * 7 / 10) - (7/2);
         return PositionColumn;
     }
     //Lineの位置指定。GameSpace内の位置を返す
     public float GetPositionLine(int Line)
     {
         float FloatLine = (float)Line;
-        float PositionLine = (FloatLine * 7 / 10) - (5 / 2);
+        float PositionLine = (FloatLine * 7 / 10) - (7 / 2);
         return PositionLine;
     }
 
@@ -54,10 +286,11 @@ public class PuzzleController : MonoBehaviour
         float PositionColumn = GetPositionColumn(Column);
         float PositionLine = GetPositionLine(Line);
 
-        NewBlock.transform.position = new Vector3(PositionColumn, PositionLine, -3);
-        float FloatGameSize = (float)GameSize;
-        float Scale = 8/ FloatGameSize*2/3;
-        NewBlock.transform.localScale= new Vector3(Scale, Scale, 1);
+        NewBlock.transform.position = new Vector3(PositionColumn, PositionLine, -7);
+
+        float FloatNowGameSize = (float)NowGameSize;
+        //        float Scale = 8/ FloatNowGameSize*2/3;
+//        NewBlock.transform.localScale= new Vector3(1, 1, 1);
 //↑盤面全体をScaleする仕様のほうがいい
 
         //Textの字がNameの字になる（本番では画像がImageの画像になる）
@@ -84,6 +317,7 @@ public class PuzzleController : MonoBehaviour
     {
         string Name="";
         string Image="";
+
         int NameRandom = Random.Range(1, 7);
         //bdesqn
         if (NameRandom == 1) { Name = "b"; }
@@ -104,17 +338,16 @@ public class PuzzleController : MonoBehaviour
     }
     public IEnumerator StartMakeBlockCoroutine()
     {
-        GameSize = 8;//ココで最初のGamzeSizeを定義。ゆくゆくは関数作って戻り値で定義する
             TapBlock.SetActive(true);//操作不能
         int CountColumn = 1;
         int CountLine = 1;
-        while (CountLine <= GameSize)
+        while (CountLine <= NowGameSize)
         {
             CountColumn = 1;
-            while (CountColumn <= GameSize)
+            while (CountColumn <= NowGameSize)
             {
                 DecideBlock(CountColumn,CountLine);
-           //     Debug.Log(CountColumn+"-"+GameSize);
+           //     Debug.Log(CountColumn+"-"+NowGameSize);
                 yield return null;
                 CountColumn++;
             }
@@ -127,7 +360,11 @@ public class PuzzleController : MonoBehaviour
     //全消し
     public void AllDestroy()
     {
-        int CountColumn = 1;
+        StartCoroutine("AllDestroyCoroutine");
+    }
+public IEnumerator AllDestroyCoroutine()
+{
+    int CountColumn = 1;
         int CountLine = 1;
 
         GameObject CheckBlock;
@@ -135,10 +372,10 @@ public class PuzzleController : MonoBehaviour
         string FindTagL;
         string FindTagName;
 
-        while (CountColumn <= GameSize)
+        while (CountColumn <= NowGameSize)
         {
             CountLine = 1;
-            while (CountLine <= GameSize)
+            while (CountLine <= NowGameSize)
             {
                 FindTagC = CountColumn.ToString();
                 FindTagL = CountLine.ToString();
@@ -153,6 +390,7 @@ public class PuzzleController : MonoBehaviour
             }
             CountColumn++;
         }
+        yield return null;
     }
 
 
@@ -224,7 +462,7 @@ public class PuzzleController : MonoBehaviour
             MovingBlock = GameObject.FindGameObjectWithTag(FindTagName);
             MoveToPositionColumn = GetPositionColumn(MoveToColumn);
             MoveToPositionLine = GetPositionLine(MoveToLine);
-            MovingBlock.transform.position = new Vector3(MoveToPositionColumn, MoveToPositionLine, -3);
+            MovingBlock.transform.position = new Vector3(MoveToPositionColumn, MoveToPositionLine, -7);
 
             MovingBlock.GetComponent<BlockStatus>().Column = MoveToColumn;
             MovingBlock.GetComponent<BlockStatus>().Line = MoveToLine;
@@ -260,7 +498,8 @@ public class PuzzleController : MonoBehaviour
        )
     {
         TapBlock.SetActive(true);//操作不能
-        //ヒットがない時、ドラッグされている対象がスタート地点から上下左右の時は、スタート地点をエンド地点とする
+        DestoryingFlag=1;
+            //ヒットがない時、ドラッグされている対象がスタート地点から上下左右の時は、スタート地点をエンド地点とする
         if (!hit)
         {
             EndColumn = StartColumn;
@@ -293,9 +532,10 @@ public class PuzzleController : MonoBehaviour
         {
             PositionColumn = GetPositionColumn(StartColumn);
             PositionLine = GetPositionLine(StartLine);
-            DraggingBlock.transform.position = new Vector3(PositionColumn, PositionLine, -3);
+            DraggingBlock.transform.position = new Vector3(PositionColumn, PositionLine, -7);
             Debug.Log("Start=End");
             TapBlock.SetActive(false);//操作不能
+            DestoryingFlag = 0;
         }
         else {
             int Count;//動かす回数
@@ -342,7 +582,7 @@ public class PuzzleController : MonoBehaviour
 
             PositionColumn = GetPositionColumn(EndColumn);
             PositionLine = GetPositionLine(EndLine);
-            DraggingBlock.transform.position = new Vector3(PositionColumn, PositionLine, -3);
+            DraggingBlock.transform.position = new Vector3(PositionColumn, PositionLine, -7);
             DraggingBlock.GetComponent<BlockStatus>().Column = EndColumn;
             DraggingBlock.GetComponent<BlockStatus>().Line = EndLine;
 
@@ -380,7 +620,7 @@ public class PuzzleController : MonoBehaviour
     {
 
         int CountColumn = 1;
-        int CountLine = GameSize;
+        int CountLine = NowGameSize;
         string OneText = "";
         string AllText = "";
         GameObject CheckBlock;
@@ -393,7 +633,7 @@ public class PuzzleController : MonoBehaviour
         while (CountLine > 0)
         {
             CountColumn = 1;
-            while (CountColumn <= GameSize)
+            while (CountColumn <= NowGameSize)
             {
                 FindTagC = CountColumn.ToString();
                 FindTagL = CountLine.ToString();
@@ -434,10 +674,10 @@ public class PuzzleController : MonoBehaviour
                 int SPColumn;
                 int SPLine;
                 float FloatSPLine;
-                FloatSPLine = StartPoint / (GameSize+1);
+                FloatSPLine = StartPoint / (NowGameSize+1);
                 SPLine = Mathf.FloorToInt(FloatSPLine) + 1;
-                SPColumn = StartPoint - ((SPLine - 1) * (GameSize + 1)) + 1;
-                SPLine = GameSize - (SPLine - 1);
+                SPColumn = StartPoint - ((SPLine - 1) * (NowGameSize + 1)) + 1;
+                SPLine = NowGameSize - (SPLine - 1);
                 //その行列の文字に消去フラグを立てる
                 int WhileCount = 0;
                 while (WhileCount < WordAmount)
@@ -486,7 +726,7 @@ public class PuzzleController : MonoBehaviour
         yield return StartCoroutine("FallBlockCoroutine");
         while (DestroyAmount > 0)
             {
-                for (int i = 1; i <= GameSize; i++)
+                for (int i = 1; i <= NowGameSize; i++)
                 {
                 yield return StartCoroutine(SupplyBlockCoroutine(i));
                 }
@@ -498,8 +738,10 @@ public class PuzzleController : MonoBehaviour
             yield return StartCoroutine(GetPointCoroutine(DestroyAmount));
             yield return StartCoroutine("FallBlockCoroutine");
         }
+        CheckLevelClear();//クリアorゲームオーバー判定
         Debug.Log("処理終了");
         TapBlock.SetActive(false);//操作不能
+        DestoryingFlag = 0;
         yield return null;
     }
 
@@ -535,10 +777,10 @@ public class PuzzleController : MonoBehaviour
         while (CountBig <= 2)//一周目は横方向、二周目は縦方向の揃いをチェック
         {
             CountLine = 1;
-            while (CountLine <= GameSize)
+            while (CountLine <= NowGameSize)
             {
                 CountColumn = 1;
-                while (CountColumn <= GameSize-2)
+                while (CountColumn <= NowGameSize-2)
                 {
                     CheckColumn1 = CountColumn;
                     CheckColumn2 = CountColumn + 1;
@@ -589,7 +831,6 @@ public class PuzzleController : MonoBehaviour
     }
 
     //得点処理
-
     public void GetPoint(int DestroyAmount)
     {
         StartCoroutine(GetPointCoroutine(DestroyAmount));
@@ -597,15 +838,10 @@ public class PuzzleController : MonoBehaviour
     IEnumerator GetPointCoroutine(int DestroyAmount)
     {
         int GetPoint;
-        int PoolPoint = GameStatus.GetComponent<GameStatus>().Point;
-        int PoolDestroy = GameStatus.GetComponent<GameStatus>().DestroyPoint;
         GetPoint = DestroyAmount * (100+ DestroyAmount);
-        GameStatus.GetComponent<GameStatus>().Point+=GetPoint;
-        GameStatus.GetComponent<GameStatus>().DestroyPoint+= DestroyAmount;
-
-        PointUI.GetComponent<Text>().text = GameStatus.GetComponent<GameStatus>().Point.ToString();
-        DestroyUI.GetComponent<Text>().text = GameStatus.GetComponent<GameStatus>().DestroyPoint.ToString();
-
+        PlusPoint(GetPoint);
+        PlusDestroy(DestroyAmount);
+        DrawPercent();
         yield return null;
     }
 
@@ -626,10 +862,10 @@ public class PuzzleController : MonoBehaviour
         string FindTagName;
         int DestroyFlag =0;
 
-        while (CountColumn <= GameSize)
+        while (CountColumn <= NowGameSize)
         {
             CountLine = 1;
-            while (CountLine <= GameSize)
+            while (CountLine <= NowGameSize)
             {
                 FindTagC = CountColumn.ToString();
                 FindTagL = CountLine.ToString();
@@ -685,14 +921,14 @@ public class PuzzleController : MonoBehaviour
             FallGoFlag = 0;
             EndPoint = 0;
 //            Debug.Log(CountColumn+"列 飛ばす："+UnDestroyedLine+"まで");
-            while (CountLine <= GameSize)
+            while (CountLine <= NowGameSize)
             {
                 FindTagC = CountColumn.ToString();
                 FindTagL = CountLine.ToString();
                 FindTagName = "Block" + FindTagC + "-" + FindTagL;
   //              Debug.Log(CountColumn + "-" + CountLine + FindTagName);
 
-                if (CountLine < GameSize)
+                if (CountLine < NowGameSize)
                 {
                     if (GameObject.FindGameObjectWithTag(FindTagName) == null)
                     {
@@ -785,8 +1021,8 @@ public class PuzzleController : MonoBehaviour
                 //落下処理フラグが立っている時だけ落下処理
                 if (FallGoFlag == 1)
                 {
-                    CountLine = GameSize;
-                    if (EndPoint == 0) { EndPoint = GameSize; }//EndPointを検出したパターン以外はEndPoint=8になる
+                    CountLine = NowGameSize;
+                    if (EndPoint == 0) { EndPoint = NowGameSize; }//EndPointを検出したパターン以外はEndPoint=8になる
                     StartCoroutine(MoveBlockCoroutine(CountFallBlock, 1, 0, EndPoint, CountColumn, CountNull));
  //                   Debug.Log(CountColumn + "-" + CountLine + "Stone:" + CountFallBlock + " EndPoint:" + EndPoint + " Column:" + CountColumn + " Null:" + CountNull);
                     // yield return new WaitForSeconds(0.2f);//遅延時間
@@ -807,7 +1043,7 @@ public class PuzzleController : MonoBehaviour
     IEnumerator FallBlockCoroutine()
     {
         int CountColumn = 1;
-        while (CountColumn <= GameSize)
+        while (CountColumn <= NowGameSize)
         {
            StartCoroutine(FallColumnCoroutine(CountColumn));
             yield return null;
@@ -835,7 +1071,7 @@ public class PuzzleController : MonoBehaviour
         string FindTagL;
         string FindTagName;
 
-        while (CountLine <= GameSize)
+        while (CountLine <= NowGameSize)
         {
             FindTagC = Column.ToString();
             FindTagL = CountLine.ToString();
@@ -845,7 +1081,7 @@ public class PuzzleController : MonoBehaviour
             { CountNull++; }
             CountLine++;
         }
-        StartLine = GameSize-CountNull+1;
+        StartLine = NowGameSize-CountNull+1;
         while (CountWhile < CountNull)
         {
             DecideBlock(Column, StartLine);
