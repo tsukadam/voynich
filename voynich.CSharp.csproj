@@ -75,8 +75,10 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Assets\Script\BlockStatus.cs" />
+    <Compile Include="Assets\Script\CSVDataReader.cs" />
     <Compile Include="Assets\Script\GachaController.cs" />
     <Compile Include="Assets\Script\GameStatus.cs" />
+    <Compile Include="Assets\Script\IdTeacher.cs" />
     <Compile Include="Assets\Script\PlayerStatus.cs" />
     <Compile Include="Assets\Script\PuzzleController.cs" />
     <Compile Include="Assets\Script\SelfHider.cs" />

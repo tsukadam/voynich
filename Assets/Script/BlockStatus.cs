@@ -42,22 +42,7 @@ public class BlockStatus : MonoBehaviour,
     public int DraggingLine = 0;//ドラッグ動作中の行。そこ以外は無反応
 
 
-    //この二つの関数はPuzzleContrallerと同じもの。
-    //いちいちFindすると大変そうなので同じものをコピーしてある→変更したらあっちも変更要
-    //Clumnの位置指定。GameSpace内の位置を返す
-    public float GetPositionColumn(int Column)
-    {
-        float FloatColumn = (float)Column;
-        float PositionColumn = (FloatColumn * 7 / 10) - 3;
-        return PositionColumn;
-    }
-    //Lineの位置指定。GameSpace内の位置を返す
-    public float GetPositionLine(int Line)
-    {
-        float FloatLine = (float)Line;
-        float PositionLine = (FloatLine * 7 / 10) - (5 / 2);
-        return PositionLine;
-    }
+
 
  
     public void OnMouseDown()

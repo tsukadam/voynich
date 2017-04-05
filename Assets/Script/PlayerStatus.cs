@@ -21,6 +21,13 @@ public class PlayerStatus : MonoBehaviour
     public int HightScoreDestroy2;
     public int HightScoreDestroy3;
 
+    //全カード、TotalContrallerのStart関数で取得してここに入れておく
+    public string[,] AllCard;
+
+    //単語リスト、TotalContrallerのStart関数で取得してここに入れておく
+    public string[] Words;
+
+
     //所持カード
     public List<string> GotCard;
     //PoolCard = {"1","2","5","9"}

@@ -13,10 +13,13 @@ public class PuzzleController : MonoBehaviour
     public GameObject PlayerStatus;    //プレイヤーstatus
     public GameObject GameStatus;    //ゲームstatus
     public GameObject EventSystem;    //イベントシステムの取得（処理中に切る場合がある）
+    public GameObject TotalController;
 
     public GameObject ButtonLvStart;    //レベルスタートボタン
     public GameObject ButtonLvStartText;    //レベルスタートテキスト
     public GameObject ButtonNextLvStart;    //Nextレベルスタートボタン
+    public GameObject ButtonNextLvStartText;    //NextレベルスタートボタンText
+
     public GameObject ButtonReStart;    //再挑戦ボタン
     public GameObject ButtonGoMenu;    //メニューに戻るボタン
     public GameObject ButtonPause;    //ポーズボタン
@@ -30,6 +33,9 @@ public class PuzzleController : MonoBehaviour
     public int TimeFlag=0;//タイマーのオンオフを切り替えるFlag
     public int DestroyAmount = 0;//直前に消した数。０のとき消去判定を止めるために使う
     public int DestoryingFlag = 0;//消去処理中をあらわすFlag
+
+    public string[] Words;//単語リスト
+
 
     //表示UI
     public GameObject PointUI;    //ポイント表記
@@ -58,6 +64,9 @@ public class PuzzleController : MonoBehaviour
         TimeFlag = 0;
 
         ButtonLvStart.SetActive(false);
+
+ 
+
 
         //レベルアップ時に操作
         GameStatus.GetComponent<GameStatus>().Time = 0;
@@ -123,6 +132,15 @@ public class PuzzleController : MonoBehaviour
         TimeFlag = 1;
     }
 
+    //中断処理
+    public void GameCancel()
+    {
+        TimeFlag = 0;
+        PauseCount = 1;
+        //このほかの処理はボタンに入れてある
+    }
+
+
     // Update is called once per frame
     void Update()
     {
@@ -185,13 +203,23 @@ public class PuzzleController : MonoBehaviour
             }
         }
     }
+    //ゴールド獲得計算・処理（トータルコントローラーを動かす）
+    public int GetGold(int Amount)
+    {
+        int GoldAmount = Amount/ 300;
+        TotalController Scripter = TotalController.GetComponent<TotalController>();
+        Scripter.PlusGold(GoldAmount);
+        return GoldAmount;
+    }
 
     //クリア→次のレベルへ行く確認
     public void LevelClear()
     {
         TapBlock.SetActive(true);//ボタン以外操作不能→ボタンが押されるまで
         GameSpace.GetComponent<SpriteRenderer>().color = new Color(0.5f, 1.0f, 0.5f, 1.0f);
-        ButtonNextLvStart.SetActive(true);
+        int GoldAmount=GetGold(GameStatus.GetComponent<GameStatus>().Point);
+        ButtonNextLvStartText.GetComponent<Text>().text = "Levelクリア！\n"+ GoldAmount+"ゴールドGET";
+            ButtonNextLvStart.SetActive(true);
 
     }
     //次のレベルへ進む
@@ -653,8 +681,7 @@ public IEnumerator AllDestroyCoroutine()
             CountLine--;
         }
         //辞書の単語と比較
-        //bdesqn
-        string[] Words = { "bdes","sqn","dde","bsn","dees" };
+        Words = PlayerStatus.GetComponent<PlayerStatus>().Words;
         int WordsMax = Words.Length;
         int WordsCount = 0;
         string Word = "";
