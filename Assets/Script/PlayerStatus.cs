@@ -2,6 +2,7 @@
 using UnityEngine.UI;
 using System.Collections;
 using UnityEngine.EventSystems;
+using System.Collections.Generic;
 
 public class PlayerStatus : MonoBehaviour
 //ゲームプレイを超えたプレイヤー固有のステータスを保持
@@ -21,7 +22,7 @@ public class PlayerStatus : MonoBehaviour
     public int HightScoreDestroy3;
 
     //所持カード
-    public string[] PoolCard;
+    public List<string> GotCard;
     //PoolCard = {"1","2","5","9"}
     //のように所持カードをＩＤで持つ。ぜんぶstringで、処理時にキャスト
 
